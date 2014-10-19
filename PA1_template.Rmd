@@ -7,96 +7,98 @@ output:
 
 
 ## Loading and preprocessing the data
+
+Set the time with the functionSys.setlocale
+to avoid some problems with the code.
 ```{r}
 filename='activity.zip'
 unzip(filename)
-file=read.csv('activity.csv',header=TRUE)
+table=read.csv('activity.csv',header=TRUE)
 
 Sys.setlocale("LC_TIME", "C")
-file$date=as.Date(file$date,"%Y-%m-%d")
+table$date=as.Date(table$date,"%Y-%m-%d")
 ```
 
 ## What is mean total number of steps taken per day?
 ```{r}
 require(reshape2)
-file_2=melt(file[,c("date","steps")],id="date", measure.vars=c("steps"),variable.name="steps")
-file_2= dcast(file_2, date~ steps,sum)
+table_2=melt(table[,c("date","steps")],id="date", measure.vars=c("steps"),variable.name="steps")
+table_2= dcast(table_2, date~ steps,sum)
 
-vmedian= round(median(file_2$steps/1000, na.rm=TRUE), digits=2)
-vmean= round(mean(file_2$steps/1000, na.rm=TRUE), digits=2)
-vmedian_text=paste("median: ",vmedian)
-vmean_text=paste("mean: ",vmean)
-
-hist(file_2$steps/1000, freq=TRUE,col="red",main="Total number of steps taken each day", xlab="steps (thousend)")
+vmedian= median(table_2$steps/1000, na.rm=TRUE)
+vmean= mean(table_2$steps/1000, na.rm=TRUE)
+vmedian_text=paste("median: ",round(vmedian, digits=2))
+vmean_text=paste("mean: ",round(vmean, digits=2))
+```
+```{r fig.height=5, fig.width=5}
+hist(table_2$steps/1000, freq=TRUE,col="red",main="Total number of steps taken each day", xlab="steps (thousend)")
 abline(v=vmedian,col="blue")
 abline(v=vmean,col="green")
 legend("topright", cex=0.6,col=c("blue","green"), lty=c(1,1), legend=c(vmedian_text,vmean_text))
-dev.copy(png, file = "ASS_1_1.png",width=500 ,height=500)
-dev.off()
 ```
+
+### The mean total number of steps is `r vmean` and the median is `r vmedian`
+
 ## What is the average daily activity pattern?
 ```{r}
-file_3=melt(file[,c("interval","steps")],id="interval", measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
-file_3= dcast(file_3, interval~ steps,mean)
+table_3=melt(table[,c("interval","steps")],id="interval", measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
+table_3= dcast(table_3, interval~ steps,mean)
 
-file_4=melt(file[,c("interval","steps")],id="interval", measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
-file_4= dcast(file_4, interval~ steps,sum)
-file_4=subset(file_4,steps==max(steps))
+table_4=melt(table[,c("interval","steps")],id="interval", measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
+table_4= dcast(table_4, interval~ steps,sum)
+table_4=subset(table_4,steps==max(steps))
 
-vmaxinterval=file_4$interval
-vmaxsteps=file_4$steps
-
-vmaxinterval
-vmaxsteps
-
-require(ggplot2)
-ggplot(file_3, aes(interval, steps)) + geom_line(color="blue")+ labs(title="Steps average daily activity")+ labs(x="5-minute interval")+ labs(y="averaged across all days")+ geom_vline(xintercept = vmaxinterval,colour="red")+annotate("text", x = vmaxinterval, y = 200, label = paste("interval(",vmaxinterval, ") with maximum number of steps:",vmaxsteps),color="red")
-dev.copy(png, file = "ASS_1_2.png",width=500 ,height=500)
-dev.off()
+vmaxinterval=table_4$interval
+vmaxsteps=table_4$steps
 ```
+
+```{r fig.height=5, fig.width=5}
+require(ggplot2)
+ggplot(table_3, aes(interval, steps)) + geom_line(color="blue")+ labs(title="Steps average daily activity")+ labs(x="5-minute interval")+ labs(y="averaged across all days")+ geom_vline(xintercept = vmaxinterval, colour="red")+ annotate("text", x = vmaxinterval, y = 200, label = paste("interval(",vmaxinterval,")"), color="red")
+```
+### The interval `r vmaxinterval` has the maximun steps: `r vmaxsteps`
 
 ## Imputing missing values
+to complete the missed values I merge the original table
+with the table_3, which containt the interval with the main.
+And I replace the NA value with the main depend from the interval
 ```{r}
-file_5=file[!complete.cases(file),]
-vRomNrMissedvalues=nrow(file_5)
+table_5=table[!complete.cases(table),]
+vRomNrMissedvalues=nrow(table_5)
 
-file_6=merge(file, file_3, by="interval", all.x=TRUE)
-file_6$steps=ifelse(is.na(file_6$steps.x),file_6$steps.y,file_6$steps.x)
-file_6=file_6[,c("date","interval","steps")]
+table_6=merge(table, table_3, by="interval", all.x=TRUE)
+table_6$steps=ifelse(is.na(table_6$steps.x),table_6$steps.y,table_6$steps.x)
+table_6=table_6[,c("date","interval","steps")]
 
-file_7=melt(file_6[,c("date","steps")],id="date", measure.vars=c("steps"),variable.name="steps")
-file_7= dcast(file_7, date~ steps,sum)
+table_7=melt(table_6[,c("date","steps")],id="date", measure.vars=c("steps"),variable.name="steps")
+table_7= dcast(table_7, date~ steps,sum)
 
-vmedian_7= round(median(file_7$steps/1000), digits=2)
-vmean_7= round(mean(file_7$steps/1000), digits=2)
-vmedian_7_text=paste("f median: ",vmedian_7)
-vmean_7_text=paste("f mean: ",vmean_7)
-
-vmedian_7
-vmean_7
-
-par(mfrow=c(1,2), cex=0.6)
-hist(file_2$steps/1000, freq=TRUE,col="red",label=TRUE, main="", xlab="")
-abline(v=vmedian,col="blue")
-abline(v=vmean,col="green")
-
-hist(file_7$steps/1000, freq=TRUE,col="red4",label=TRUE, main="",xlab="",ylab="")
-abline(v=vmedian_7,col="powderblue")
-abline(v=vmean_7,col="palegreen")
-#legend("topright", cex=0.3,col=c("blue","green","powderblue","palegreen"), lty=c(1,1,1,1), legend=c(vmedian_text,vmean_text, vmedian_7_text,vmean_7_text))
-dev.copy(png, file = "ASS_1_3.png",width=500 ,height=500)
-dev.off()
+vmedian_7= median(table_7$steps/1000)
+vmean_7= mean(table_7$steps/1000)
+vmedian_7_text=paste("f median: ",round(vmedian_7,digits=2))
+vmean_7_text=paste("f mean: ",round(vmean_7,digits=2))
 ```
+
+```{r fig.height=5, fig.width=5}
+par(mfrow=c(1,2), cex=0.6)
+hist(table_2$steps/1000, freq=TRUE,col="red",label=TRUE, main=NULL, xlab="steps (thousend)")
+hist(table_7$steps/1000, freq=TRUE,col="red4",label=TRUE,main=NULL, xlab="steps (thousend)")
+title(main="Total number of steps taken each day/datas with NA values & datas without NA values", adj=1,outer=TRUE)
+```
+### the right histogramm (with the filled values) has more frequencies as the left (with the NA values)
+
+### After filled the missed values the new mean total number of steps is `r vmean_7` and the new median is `r vmedian_7`. the mean is equal the median
+
+### before the mean was greater than the median (`r vmean` > `r vmedian`)
 
 ## Are there differences in activity patterns between weekdays and weekends?
 ```{r}
-file_6$weekday=ifelse(weekdays(file_6$date) %in% c("Saturday", "Sunday"),"weekend","weekday")
+table_6$weekday=ifelse(weekdays(table_6$date) %in% c("Saturday", "Sunday"),"weekend","weekday")
 
-file_8=melt(file_6[,c("interval","weekday","steps")],id=c("interval","weekday"), measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
-file_8= dcast(file_8, interval+weekday~ steps,mean)
-
-ggplot(file_8, aes(interval, steps)) +facet_grid(.~weekday)+geom_line(color="red") +labs(x="interval")+labs(y="averaged steps")
-dev.copy(png, file = "ASS_1_4.png",width=500 ,height=500)
-dev.off()
+table_8=melt(table_6[,c("interval","weekday","steps")],id=c("interval","weekday"), measure.vars=c("steps"),variable.name="steps", na.rm=TRUE)
+table_8= dcast(table_8, interval+weekday~ steps,mean)
 ```
-
+```{r fig.height=5, fig.width=5}
+ggplot(table_8, aes(interval, steps)) +facet_grid(.~weekday)+geom_line(color="red") +labs(x="interval")+labs(y="averaged steps")
+```
+### The last plot show that, there are differences in activity patterns between weekdays and weekends. The maximun steps is reached in the weekdays
